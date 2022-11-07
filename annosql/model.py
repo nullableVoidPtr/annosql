@@ -1,86 +1,97 @@
 import re
-from typing import TYPE_CHECKING, Dict
+from typing import Type, TYPE_CHECKING, Dict
 from types import new_class
+
 if TYPE_CHECKING:
     from .column import Column
+    from .dialect import Dialect
 
-CAMELCASE_PATTERN = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')
+CAMELCASE_PATTERN = re.compile("((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))")
 
 
 def camel_to_snake(name):
-    return CAMELCASE_PATTERN.sub(r'_\1', name)
+    return CAMELCASE_PATTERN.sub(r"_\1", name)
 
 
-class _DatabaseModelMeta():
-    @classmethod
-    def new_base(cls, typename: str = "Model"):
-        return new_class(typename, (cls,), {'metaclass': _ModelMeta})
+class _TableModelMeta(type):
+    def __new__(cls, name, bases, dct):
+        return super().__new__(cls, name, bases, dct)
 
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+        schema_model: _SchemaModelMeta = type(cls)
+        table_name = cls.__tablename__
+        if table_name in schema_model._registered_tables:
+            raise ValueError(f"{cls.__tablename__} already defined")
 
-class _TableModelMeta():
-    @classmethod
+        schema_model._registered_tables[table_name] = cls
+
     @property
     def __tablename__(cls):
         return camel_to_snake(cls.__name__)
 
-    @classmethod
     @property
     def __primarykey__(cls) -> Dict[str, "Column"]:
         from .column import Column
         from .column.attribute import PrimaryKey
+
         keys = {
             name: col
             for name, col in cls.__annotations__.items()
-            if type(col) is Column and
-            any(attr is PrimaryKey is PrimaryKey for attr in col._attributes)
+            if type(col) is Column
+            and any(attr is PrimaryKey is PrimaryKey for attr in col._attributes)
         }
         return keys
 
-
-
-class _ModelMeta(type):
-    _registered_tables: Dict = {}
-
-    def __new__(cls, name, bases, dct):
-        print("_ModelMeta.__new__", cls, name, bases, dct)
-
-        if len(bases) == 0:
-            raise TypeError("Expected some bases")
-
-        if len(bases) == 1:
-            if bases[0] == _DatabaseModelMeta:
-                if dct.get('__annotations__') is not None and len(dct['__annotations__']):
-                    raise TypeError("_ModelMeta should not be used to define tables")
-                return super().__new__(cls, name, (type, *bases), dct)
-
-            db_model = bases[0]
-            table_model = super().__new__(db_model, name, (_TableModelMeta,), dct)
-            cls.__init__(table_model, name, (db_model, _TableModelMeta), dct)
-            return table_model
-
-        raise TypeError("Table models should not be subclassed")
-
-    def __init__(cls, name, bases, dct):
-        print("_ModelMeta.__init__", cls, name, bases, dct)
-        if len(bases) == 1:
-            super().__init__(name, bases, dct)
-            cls._registered_tables = {}
-        elif len(bases) == 2:
-            db_model = type(cls)
-            table_name = cls.__tablename__
-            if table_name in cls._registered_tables:
-                raise ValueError(f"{cls.__tablename__} already defined")
-
-            db_model._registered_tables[table_name] = cls
-        else:
-            raise TypeError("Table models should not be subclassed")
-
-
     @classmethod
     @property
+    def __schema__(cls) -> "_SchemaModelMeta":
+        return type(cls)
+
+
+class _SchemaModelMeta(type):
+    _registered_tables: Dict = {}
+    _table_meta: Type[_TableModelMeta]
+    __defaultdialect__: Type["Dialect"]
+
+    def __new__(cls, name, bases, dct):
+        if len(bases) == 0:
+            if len(dct.get("__annotations__", [])):
+                raise TypeError(
+                    "_SchemaModelMeta should not be directly used to define tables"
+                )
+            return super().__new__(cls, name, (type,), dct)
+
+        schema_model = bases[0]
+        if not isinstance(schema_model, cls) or len(bases) > 1:
+            raise TypeError("Unexpected subclass")
+
+        table_meta = schema_model._table_meta
+        return table_meta(name, (), dct)
+
+    def __init__(cls, name, bases, dct, dialect=None):
+        if len(bases) == 0:
+            super().__init__(name, bases, dct)
+            cls._registered_tables = {}
+
+            from .dialect import Dialect, SQLiteDialect
+
+            cls.__defaultdialect__ = dialect or SQLiteDialect
+
+            if not issubclass(cls.__defaultdialect__, Dialect):
+                raise TypeError("Expected a subclass of Dialect")
+
+            cls._table_meta = super().__new__(
+                cls, f"{cls.__name__}_TableMeta", (_TableModelMeta,), {}
+            )
+
+    def new_base(cls, typename: str = "Model"):
+        return new_class(typename, (), {"metaclass": _SchemaModelMeta})
+
+    @property
     def ddl(cls):
-        print(cls.__dialect__().ddl_from_model_base(Model))
+        return cls.__defaultdialect__().ddl_from_model_base(Model)
 
 
-class Model(_DatabaseModelMeta, metaclass=_ModelMeta):
+class Model(metaclass=_SchemaModelMeta):
     pass

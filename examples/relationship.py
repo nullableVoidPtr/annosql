@@ -1,6 +1,6 @@
 from annosql import Column, Model
-from annosql.dialect import SQLiteDialect
 from annosql.column.attribute import PrimaryKey, Unique
+from annosql.dialect import SQLiteDialect
 
 
 class Address(Model):
@@ -19,5 +19,6 @@ class User(Model):
 
     def __repr__(self):
         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+
 
 print(SQLiteDialect().ddl_from_model_base(Model))

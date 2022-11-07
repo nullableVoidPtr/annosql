@@ -1,8 +1,7 @@
-from typing import Type
-from .base import BaseDialect
+from .base import Dialect
 
 
-class SQLiteDialect(BaseDialect):
+class SQLiteDialect(Dialect):
     def __init__(self):
         pass
 

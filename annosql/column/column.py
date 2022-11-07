@@ -1,6 +1,6 @@
 from typing import Optional, Any, List
 from .attribute import ColumnAttribute
-from ..model import Model
+from ..model import _TableModelMeta
 
 
 class _ColumnMeta(type):
@@ -8,7 +8,7 @@ class _ColumnMeta(type):
         return cls() | other
 
 
-class Column(object, metaclass=_ColumnMeta):
+class Column(metaclass=_ColumnMeta):
     _datatype: Optional[Any]
     _length: Optional[int]
     _attributes: List[ColumnAttribute]
@@ -22,7 +22,7 @@ class Column(object, metaclass=_ColumnMeta):
     def is_foreign_key(self) -> bool:
         if not self._datatype:
             return False
-        return issubclass(self._datatype, Model)
+        return isinstance(self._datatype, _TableModelMeta)
 
     def define_attr(self, attribute: Any):
         attr_type = type(attribute)
@@ -34,7 +34,7 @@ class Column(object, metaclass=_ColumnMeta):
             elif attribute in [int, float, str, bool, dict, bytes]:
                 self._datatype = attribute
                 return self
-            elif issubclass(attribute, Model):
+            elif isinstance(attribute, _TableModelMeta):
                 self._datatype = attribute
                 return self
         elif attr_type is ColumnAttribute:
