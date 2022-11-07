@@ -1,6 +1,7 @@
-from typing import Optional, Any, List
-from .attribute import ColumnAttribute
+from typing import Any, List, Optional
+
 from ..model import _TableModelMeta
+from .attribute import ColumnAttribute
 
 
 class _ColumnMeta(type):

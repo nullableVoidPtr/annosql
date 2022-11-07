@@ -12,7 +12,7 @@ class Dialect(ABC):
 
     def resolve_foreign_keys(self, prefix, target) -> Dict[str, Tuple[str, Any]]:
         schema_model = type(target)
-        foreign_keys = {}
+        foreign_keys: Dict[str, Tuple[str, Any]] = {}
         for key_name, key_col in target.__primarykey__.items():
             fk_name = f"{prefix}_{key_name}"
             if issubclass(key_col._datatype, schema_model):

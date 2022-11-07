@@ -1,6 +1,6 @@
 import re
-from typing import Type, TYPE_CHECKING, Dict
 from types import new_class
+from typing import TYPE_CHECKING, Dict, Type
 
 if TYPE_CHECKING:
     from .column import Column
@@ -19,7 +19,9 @@ class _TableModelMeta(type):
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        schema_model: _SchemaModelMeta = type(cls)
+        schema_model = type(cls)
+        assert isinstance(schema_model, _SchemaModelMeta)
+
         table_name = cls.__tablename__
         if table_name in schema_model._registered_tables:
             raise ValueError(f"{cls.__tablename__} already defined")
@@ -43,10 +45,13 @@ class _TableModelMeta(type):
         }
         return keys
 
-    @classmethod
     @property
     def __schema__(cls) -> "_SchemaModelMeta":
-        return type(cls)
+        table_meta = type(cls)
+        schema_model = type(table_meta)
+        assert isinstance(schema_model, _SchemaModelMeta)
+
+        return schema_model
 
 
 class _SchemaModelMeta(type):
@@ -82,7 +87,7 @@ class _SchemaModelMeta(type):
                 raise TypeError("Expected a subclass of Dialect")
 
             cls._table_meta = super().__new__(
-                cls, f"{cls.__name__}_TableMeta", (_TableModelMeta,), {}
+                cls, f"{cls.__name__}_TableMeta", (_TableModelMeta,), {}  # type: ignore
             )
 
     def new_base(cls, typename: str = "Model"):
