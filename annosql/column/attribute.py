@@ -8,3 +8,6 @@ class PrimaryKey(metaclass=ColumnAttribute):
 
 class Unique(metaclass=ColumnAttribute):
     pass
+
+class ForeignKeyAttribute(ColumnAttribute):
+    pass

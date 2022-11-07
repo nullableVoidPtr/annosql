@@ -9,30 +9,36 @@ class _ColumnMeta(type):
 
 
 class Column(object, metaclass=_ColumnMeta):
-    datatype: Optional[Any]
-    length: Optional[int]
-    attributes: List[ColumnAttribute]
+    _datatype: Optional[Any]
+    _length: Optional[int]
+    _attributes: List[ColumnAttribute]
 
     def __init__(self):
-        self.datatype = None
-        self.length = None
-        self.attributes = []
+        self._datatype = None
+        self._length = None
+        self._attributes = []
+
+    @property
+    def is_foreign_key(self) -> bool:
+        if not self._datatype:
+            return False
+        return issubclass(self._datatype, Model)
 
     def define_attr(self, attribute: Any):
         attr_type = type(attribute)
-        if self.datatype is None:
+        if self._datatype is None:
             if attr_type in [int, float, str]:
-                self.datatype = attr_type
+                self._datatype = attr_type
                 self.length = int(attribute)
                 return self
             elif attribute in [int, float, str, bool, dict, bytes]:
-                self.datatype = attribute
+                self._datatype = attribute
                 return self
             elif issubclass(attribute, Model):
-                self.datatype = attribute
+                self._datatype = attribute
                 return self
         elif attr_type is ColumnAttribute:
-            self.attributes.append(attribute)
+            self._attributes.append(attribute)
             return self
         else:
             raise ValueError(f"Unknown column attribute {attribute}")

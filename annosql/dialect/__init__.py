@@ -1,4 +1,4 @@
-from .base import Dialect
+from .base import BaseDialect
 from .sqlite import SQLiteDialect
 
-__all__ = ["Dialect", "SQLiteDialect"]
+__all__ = ["BaseDialect", "SQLiteDialect"]

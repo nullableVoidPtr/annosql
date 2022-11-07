@@ -1,0 +1,15 @@
+[project]
+name = "annosql"
+version = "0.0.1"
+description = "My package description"
+requires-python = ">=3.8"
+license = {text = "BSD 3-Clause License"}
+classifiers = [
+]
+dependencies = [
+]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+

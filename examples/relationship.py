@@ -21,4 +21,3 @@ class User(Model):
         return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
 
 print(SQLiteDialect().ddl_from_model_base(Model))
-
