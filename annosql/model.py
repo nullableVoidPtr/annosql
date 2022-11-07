@@ -1,6 +1,6 @@
 import re
 from types import new_class
-from typing import TYPE_CHECKING, Dict, Type
+from typing import TYPE_CHECKING, Dict, Type, Any
 
 if TYPE_CHECKING:
     from .column import Column
@@ -19,7 +19,7 @@ class _TableModelMeta(type):
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        schema_model = type(cls)
+        schema_model = cls.__schema__
         assert isinstance(schema_model, _SchemaModelMeta)
 
         table_name = cls.__tablename__
@@ -35,13 +35,11 @@ class _TableModelMeta(type):
     @property
     def __primarykey__(cls) -> Dict[str, "Column"]:
         from .column import Column
-        from .column.attribute import PrimaryKey
 
         keys = {
             name: col
             for name, col in cls.__annotations__.items()
-            if type(col) is Column
-            and any(attr is PrimaryKey is PrimaryKey for attr in col._attributes)
+            if type(col) is Column and col._primary_key
         }
         return keys
 
@@ -74,14 +72,14 @@ class _SchemaModelMeta(type):
         table_meta = schema_model._table_meta
         return table_meta(name, (), dct)
 
-    def __init__(cls, name, bases, dct, dialect=None):
+    def __init__(cls, name, bases, dct, **kwargs: Any):
         if len(bases) == 0:
             super().__init__(name, bases, dct)
             cls._registered_tables = {}
 
             from .dialect import Dialect, SQLiteDialect
 
-            cls.__defaultdialect__ = dialect or SQLiteDialect
+            cls.__defaultdialect__ = kwargs.pop('dialect', SQLiteDialect)
 
             if not issubclass(cls.__defaultdialect__, Dialect):
                 raise TypeError("Expected a subclass of Dialect")

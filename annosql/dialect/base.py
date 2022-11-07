@@ -29,7 +29,6 @@ class Dialect(ABC):
         annotations = get_type_hints(model)
         for name, column in annotations.items():
             from ..column import Column
-            from ..column.attribute import Unique
 
             if type(column) is not Column:
                 continue
@@ -46,13 +45,16 @@ class Dialect(ABC):
                         f"{key_name} {self.generate_typename(target_type)}"
                     )
                 epilogue.append(
-                    f"CONSTRAINT fk_{name}_{datatype.__tablename__} FOREIGN KEY ({', '.join(foreign_keys.keys())}) "
-                    f"REFERENCES {datatype.__tablename__}({', '.join(n for n, _ in foreign_keys.values())})"
+                    f"CONSTRAINT fk_{name}_{datatype.__tablename__} "
+                    f"FOREIGN KEY ({', '.join(foreign_keys.keys())}) "
+                    f"REFERENCES {datatype.__tablename__}"
+                    f"({', '.join(n for n, _ in foreign_keys.values())}) "
+                    f"ON UPDATE {column._on_update} ON DELETE {column._on_delete}"
                 )
             else:
                 generated.append(f"{name} {self.generate_typename(column._datatype)}")
 
-            if Unique in column._attributes:
+            if column._unique and not column._primary_key:
                 epilogue.append(f"CONSTRAINT uq_{name} UNIQUE ({name})")
 
         primary_keys = model.__primarykey__.keys()
